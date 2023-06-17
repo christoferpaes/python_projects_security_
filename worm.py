@@ -10,6 +10,7 @@ Shanto Roy
 
 import os
 import shutil
+import sys
 
 class Worm:
     
@@ -91,8 +92,10 @@ class Worm:
         
         
 if __name__ == "__main__":
-    current_directory = os.path.abspath("")
-    worm = Worm(path=current_directory, iteration=25)
-    worm.start_worm_actions()
-    
+    if len(sys.argv) < 2:
+        print("Please provide the path to start the worm.")
+    else:
+        current_directory = sys.argv[1]
+        worm = Worm(path=current_directory, iteration=25)
+        worm.start_worm_actions()
     
