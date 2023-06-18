@@ -57,9 +57,7 @@ class Victim:
         self.password = password
 
     def connect_to_server(self):
-        print("####################################")
-        print("########## Client Program ##########")
-        print("####################################")
+
 
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
