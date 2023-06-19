@@ -19,6 +19,5 @@ random_values = sr.random(num_values)
 
 # Plotting the random values
 fig = go.Figure(data=go.Scatter(y=random_values, mode='markers'))
-fig.update_layout(title="CSPRNG")
-
 fig.show()
+
