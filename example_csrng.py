@@ -1,33 +1,6 @@
-import random
-import os
-
-class SystemRandom(random.Random):
-    """Class representing a cryptographically secure random number generator."""
-
-    def random(self):
-        """Return the next random floating-point number in the range [0.0, 1.0)."""
-        return os.urandom(4) / 0xffffffff
-
-    def randint(self, a, b):
-        """Return a random integer N such that a <= N <= b."""
-        return a + int((b - a + 1) * self.random())
-
-    def choice(self, seq):
-        """Return a random element from the non-empty sequence seq."""
-        if not seq:
-            raise IndexError("Cannot choose from an empty sequence.")
-        return seq[self.randint(0, len(seq) - 1)]
-
-    def shuffle(self, seq):
-        """Shuffle the sequence seq in place."""
-        if len(seq) <= 1:
-            return
-        for i in range(len(seq) - 1, 0, -1):
-            j = self.randint(0, i)
-            seq[i], seq[j] = seq[j], seq[i]
-
-# Example usage
-sr = SystemRandom()
+These programs are for demonstration and educational purposes only. 
+If anyone attempts to use or modify these programs it could be illegal and is considered unethical. Receive authorization before conducting any tests.
+I do not condone or endorse any illegal or unethical behavior that these programs could be used for.
 
 # Generate a random floating-point number
 print(sr.random())
