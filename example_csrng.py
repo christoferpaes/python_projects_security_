@@ -1,18 +1,24 @@
-These programs are for demonstration and educational purposes only. 
-If anyone attempts to use or modify these programs it could be illegal and is considered unethical. Receive authorization before conducting any tests.
-I do not condone or endorse any illegal or unethical behavior that these programs could be used for.
+import random
+import os
+import plotly.graph_objects as go
 
-# Generate a random floating-point number
-print(sr.random())
+class SystemRandom(random.Random):
+    """Class representing a cryptographically secure random number generator."""
 
-# Generate a random integer
-print(sr.randint(1, 10))
+    def random(self, num_values):
+        """Return a list of random floating-point numbers in the range [0.0, 1.0)."""
+        random_bytes = os.urandom(4 * num_values)
+        random_integers = [int.from_bytes(random_bytes[i:i+4], byteorder='big') for i in range(0, len(random_bytes), 4)]
+        return [value / 0xffffffff for value in random_integers]
 
-# Choose a random element from a sequence
-sequence = [1, 2, 3, 4, 5]
-print(sr.choice(sequence))
+# Example usage
+sr = SystemRandom()
 
-# Shuffle a sequence
-sequence = [1, 2, 3, 4, 5]
-sr.shuffle(sequence)
-print(sequence)
+num_values = 1000
+random_values = sr.random(num_values)
+
+# Plotting the random values
+fig = go.Figure(data=go.Scatter(y=random_values, mode='markers'))
+fig.update_layout(title="CSPRNG")
+
+fig.show()
