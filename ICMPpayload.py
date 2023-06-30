@@ -733,7 +733,8 @@ print_string:
 
 .done:
     popa
-    ret"""
+    ret
+    """
     payload3 =  """ .data
     path: .asciiz "/"
     target_dir_list: .word 0
