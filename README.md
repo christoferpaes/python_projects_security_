@@ -8,7 +8,7 @@ I do not condone or endorse any illegal or unethical behavior.
 
 
 #########################################################################
-<b>Program Classification: Handgun
+<div> <b>Program Classification: Handgun
 
 Detailed Report on Program Threat Level:
 
@@ -51,4 +51,4 @@ Re-evaluation:
 Based on the program's characteristics and the incorporated payloads, the threat level assessment remains consistent. The custom payloads enhance the program's capabilities, allowing for lateral movement via SSH using PtH, covert communication through ICMP tunneling, and comprehensive information gathering with email-based exfiltration. These additions provide additional attack vectors and potential risks, but their overall impact remains within the moderate threat level.
 
 Conclusion:
-In conclusion, the analyzed program is classified as a handgun within the cyber weapons categorization. It exhibits a moderate level of sophistication and poses a higher risk to individual users and small businesses. While it has the potential to cause significant damage to compromised systems, its impact is limited compared to more advanced cyber threats. By implementing standard security measures and following best practices, organizations can effectively mitigate the risks associated with this program. Continuous monitoring, prompt response to security incidents, and regular updates to defensive measures are essential to maintaining a strong security posture against this program. </b>
+In conclusion, the analyzed program is classified as a handgun within the cyber weapons categorization. It exhibits a moderate level of sophistication and poses a higher risk to individual users and small businesses. While it has the potential to cause significant damage to compromised systems, its impact is limited compared to more advanced cyber threats. By implementing standard security measures and following best practices, organizations can effectively mitigate the risks associated with this program. Continuous monitoring, prompt response to security incidents, and regular updates to defensive measures are essential to maintaining a strong security posture against this program. </b></div> 
