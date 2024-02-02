@@ -7,14 +7,11 @@ import os
 import subprocess
 
 def open_and_run_program_ethically():
-    """
-    Opens and runs the specified program, emphasizing ethical considerations.
-    """
+
 
     program_path = os.path.join(os.path.expanduser("~"), "Downloads", "worm.py")  # Path in Downloads
 
 
-# Call the function to run the program (if the user agrees)
 open_and_run_program_ethically()
 
 
