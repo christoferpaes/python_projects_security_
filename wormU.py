@@ -1,5 +1,4 @@
 from scapy.all import *
-import os
 import shutil
 import sys
 from cryptography.fernet import Fernet
